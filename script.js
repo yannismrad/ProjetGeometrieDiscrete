@@ -19,7 +19,7 @@ var selRot = false;
 var centerRot = new THREE.Vector2();
 
 var segments = new Array(); //liste des segments obtenus par la fonction de segmentation
-
+var dM = new Array(); //courbe
 
 //Initialisation jQuery
 $(document).ready(function(){
@@ -134,23 +134,74 @@ function init() {
 **/
 function segmentation(xStart, yStart, N)
 {
+	dM = new Array(); //courbe
 	var h,k, xk, yk, alpha, beta, gamma, delta, phi ,psi, a, b, mu, Ux, Uy, Lx, Ly;
 	
 	h = 0; 
 	xh = xStart;
-	yh = yStart,
+	yh = yStart;
 	
 	while(h < N)
 	{
 		movingFrame(h,k, xk, yk, alpha, beta, gamma, delta, phi ,psi, a, b, mu, Ux, Uy, Lx, Ly);
 		recognizeSegment(k,xk,yk,a,b,mu);
 		
-		h = k;
-		xh = xk;
-		yh = yk;
+		//h = k;
+		//xh = xk;
+		//yh = yk;
+		
+		//Pour minimiser le nombre de segments
+		//on utilise le pixel de fin d'un segment comme debut
+		//du segment suivant
+		if(k == N)
+			h = N;
+			
+		else
+			h = k+1;
+			xh = xk + dM[h].x;
+			yh = yk + dM[h].y;
 	}
 	
 }
+
+/**
+* Fonction pour déplacer le repère
+**/
+function movingFrame(h,k, xk, yk, alpha, beta, gamma, delta, phi ,psi, a, b, mu, Ux, Uy, Lx, Ly)
+{
+	var dx, dy, ddx, ddy;
+	
+	k = h;
+	xk = xh;
+	yk = yh;
+	
+	dx = dM[h+1].x;
+	dy = dM[h+1].y;
+	
+	while (k < N && dM[k].x == dx && dM[k+1].y == dy)
+	{
+		l++;
+		xk = xk + dM[k].x;
+		yk = yk + dM[k].y;
+	}
+	
+	var rot = rotation(xh, yh,dx,dy);
+	
+	if(k < N)
+		adjust_axis(dx,dy, dM[k+1].x, dM[k+1].y, rot);
+	
+	if(dx == 0 || dy == 0)
+		Lx = k -h;
+	else
+		Lx = 0;
+	a = 1;
+	b = Lx+1;
+	mu = 0;
+	Ly = 0;
+	Ux = 0;
+	Uy = 0;
+}
+		
 
 /**
 * Fonction de rotation(retourne un objet Rotation)
@@ -200,15 +251,15 @@ params = dx, dy, ddx, ddy, rot (objet rotation)
 **/
 function adjustAxis(dx,dy,ddx,ddy, rot)
 {
-	if(dy ==0 && ddx = dx && ddy = -dx)
+	if(dy ==0 && ddx == dx && ddy == -dx)
 		changeVerticalAxis(rot);
 
-	else if(dx ==0 && ddx = dy && ddy = dy)
+	else if(dx ==0 && ddx == dy && ddy == dy)
 		changeHorizontalAxis(rot);
 
 	else
 	{
-		if ((dx == dy && ddx == 0 && ddy == dy) || (dx == -dy && ddx = dx && ddy = 0))
+		if ((dx == dy && ddx == 0 && ddy == dy) || (dx == -dy && ddx == dx && ddy == 0))
 		{
 			exchangeAxis(rot);
 		}
